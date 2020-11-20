@@ -378,36 +378,29 @@ settings_dialog::settings_dialog(std::shared_ptr<gui_settings> gui_settings, std
      	m_emu_settings->EnhanceComboBox(ui->antiAliasing, emu_settings_type::MSAA);
         SubscribeTooltip(ui->gb_antiAliasing, tooltips.settings.enable_anti_aliasing);
 
-        static const QString anti_aliasing_forced = qstr(fmt::format("%s", anti_aliasing_usage::forced));
-        static const QString anti_aliasing_default = qstr(m_emu_settings->GetSettingDefault(emu_settings_type::MSAA));
+        static const QString anti_aliasing_enabled = qstr(fmt::format("%s", anti_aliasing_usage::enabled));
+        static const QString anti_aliasing_disabled = qstr(fmt::format("%s", anti_aliasing_usage::disabled));
 
         // connect the toogled signal so that the stateChanged signal in EnhanceCheckBox can be prevented
         connect(ui->antiAliasing, &QComboBox::currentTextChanged, [this](const QString& text)
-        {
-            if (text == anti_aliasing_forced && !utils::has_mpx() && QMessageBox::No == QMessageBox::critical(this, tr("Intel iGPU ANV Vulkan driver warning"), tr(
-                R"(
-                    <p style="white-space: nowrap;">
-                        RPCS3 has detected you are using anti-aliasing functions on an Intel iGPU running the ANV driver.<br>
-                        Intel doesn't support MSAA (multi-sampling anti-aliasing) within their integrated GPU hardware. <br>
-                        That means using MSAA will cause RPCS3 to crash with a VK_ERROR_FEATURE_NOT_PRESENT.<br>
-                        We recommend to disable this feature.<br><br>
-                        Do you wish to use MSAA anyway?
-                    </p>
-                )"
-            ), QMessageBox::Yes, QMessageBox::No))
-            {
-             	// Reset if the messagebox was answered with no. This prevents the currentIndexChanged signal in EnhanceComboBox
-                ui->enable_anti_aliasing->setCurrentText(anti_alising_default);
-            }
-	});
     }
-    else
+    if
     {
-     	ui->enable_anti_aliasing->setEnabled(false);
+        ui->enable_anti_aliasing->setEnabled(false);
         ui->enable_anti_aliasing->addItem(tr("Not supported", "Enable MSAA"));
         SubscribeTooltip(ui->enable_anti_aliasing, tr("Unfortunately your GPU model does not support this instruction set.", "Enable MSAA"));
 
         m_emu_settings->SetSetting(emu_settings_type::MSAA, fmt::format("%s", anti_aliasing__usage::disabled));
+
+	});
+    }
+    else
+    {
+     	ui->enable_anti_aliasing->setEnabled(true);
+        ui->enable_anti_aliasing->addItem(tr("Supported", "Enable MSAA"));
+        SubscribeTooltip(ui->enable_anti_aliasing, tr("Enable MSAA"));
+
+        m_emu_settings->SetSetting(emu_settings_type::MSAA, fmt::format("%s", anti_aliasing__usage::enabled));
     }
 
 	m_emu_settings->EnhanceComboBox(ui->anisotropicFilterOverride, emu_settings_type::AnisotropicFilterOverride, true);
@@ -428,7 +421,8 @@ settings_dialog::settings_dialog(std::shared_ptr<gui_settings> gui_settings, std
 			break;
 		default:
 			ui->anisotropicFilterOverride->removeItem(i);
-			break;
+			break;qstr(fmt::format("%s", anti_aliasing_usage::enabled));
+
 		}
 	}
 
