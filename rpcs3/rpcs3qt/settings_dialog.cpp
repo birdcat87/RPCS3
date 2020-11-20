@@ -369,6 +369,46 @@ settings_dialog::settings_dialog(std::shared_ptr<gui_settings> gui_settings, std
 
 	m_emu_settings->EnhanceComboBox(ui->antiAliasing, emu_settings_type::MSAA);
 	SubscribeTooltip(ui->gb_antiAliasing, tooltips.settings.anti_aliasing);
+    // Disable anti-aliasing by default for the Intel iGPU ANV Vulkan driver due to the hardware not supporing shaderStorageImageMultisample. 
+    // If one attempts to force MSAA (Playstation 3 Anti-Aliasing) to run on RPCS3 when using Vulkan, RPCS3 will crash with a VK_ERROR_FEATURE_NOT_PRESENT.  
+    // The source of the error would be in line 1017 of vkhelpers.h in alpha build branch 1.3, formerly line 1001 in previous alpha branches.
+    // Honestly, I just copied this code from the TSX program instructions earlier in this file, and altered it to work with this.  
+       if (utils::has_rtm())
+    {
+     	m_emu_settings->EnhanceComboBox(ui->antiAliasing, emu_settings_type::MSAA);
+        SubscribeTooltip(ui->gb_antiAliasing, tooltips.settings.enable_anti_aliasing);
+
+        static const QString anti_aliasing_forced = qstr(fmt::format("%s", anti_aliasing_usage::forced));
+        static const QString anti_aliasing_default = qstr(m_emu_settings->GetSettingDefault(emu_settings_type::MSAA));
+
+        // connect the toogled signal so that the stateChanged signal in EnhanceCheckBox can be prevented
+        connect(ui->antiAliasing, &QComboBox::currentTextChanged, [this](const QString& text)
+        {
+            if (text == anti_aliasing_forced && !utils::has_mpx() && QMessageBox::No == QMessageBox::critical(this, tr("Intel iGPU ANV Vulkan driver warning"), tr(
+                R"(
+                    <p style="white-space: nowrap;">
+                        RPCS3 has detected you are using anti-aliasing functions on an Intel iGPU running the ANV driver.<br>
+                        Intel doesn't support MSAA (multi-sampling anti-aliasing) within their integrated GPU hardware. <br>
+                        That means using MSAA will cause RPCS3 to crash with a VK_ERROR_FEATURE_NOT_PRESENT.<br>
+                        We recommend to disable this feature.<br><br>
+                        Do you wish to use MSAA anyway?
+                    </p>
+                )"
+            ), QMessageBox::Yes, QMessageBox::No))
+            {
+             	// Reset if the messagebox was answered with no. This prevents the currentIndexChanged signal in EnhanceComboBox
+                ui->enable_anti_aliasing->setCurrentText(anti_alising_default);
+            }
+	});
+    }
+    else
+    {
+     	ui->enable_anti_aliasing->setEnabled(false);
+        ui->enable_anti_aliasing->addItem(tr("Not supported", "Enable MSAA"));
+        SubscribeTooltip(ui->enable_anti_aliasing, tr("Unfortunately your GPU model does not support this instruction set.", "Enable MSAA"));
+
+        m_emu_settings->SetSetting(emu_settings_type::MSAA, fmt::format("%s", anti_aliasing__usage::disabled));
+    }
 
 	m_emu_settings->EnhanceComboBox(ui->anisotropicFilterOverride, emu_settings_type::AnisotropicFilterOverride, true);
 	SubscribeTooltip(ui->gb_anisotropicFilter, tooltips.settings.anisotropic_filter);
